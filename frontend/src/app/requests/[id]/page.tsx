@@ -21,6 +21,7 @@ export default function RequestDetail() {
   const [req, setReq] = useState<BloodRequest | null>(null);
   const [me, setMe] = useState<Me | null>(null);
   const [matches, setMatches] = useState<Match[]>([]);
+  const [myStatus, setMyStatus] = useState<string | null>(null);
   const [msg, setMsg] = useState("");
   const [busy, setBusy] = useState(false);
 
@@ -33,6 +34,9 @@ export default function RequestDetail() {
     if (!localStorage.getItem("access_token")) { router.replace("/login"); return; }
     load().catch((e) => setMsg(apiError(e)));
     fetchMe().then(setMe).catch(() => {});
+    api.get("/matching/inbox")
+      .then(({ data }) => setMyStatus(data.find((x: any) => x.request_id === id)?.status ?? null))
+      .catch(() => {});
   }, [id]);
 
   async function runMatch() {
@@ -50,6 +54,7 @@ export default function RequestDetail() {
     try {
       await api.post(`/matching/${id}/respond`, null, { params: { action } });
       setMsg(`You chose to ${action}.`);
+      setMyStatus(action === "accept" ? "accepted" : action === "decline" ? "declined" : "snoozed");
       await load();
     } catch (e) { setMsg(apiError(e)); } finally { setBusy(false); }
   }
@@ -91,7 +96,11 @@ export default function RequestDetail() {
         </div>
       )}
 
-      {open && me && !isOwner && me.blood_group && (
+      {open && me && !isOwner && myStatus && myStatus !== "notified" && (
+        <p className="text-sm text-gray-700">Your response: <b>{myStatus}</b></p>
+      )}
+
+      {open && me && !isOwner && myStatus === "notified" && (
         <div className="card">
           <p className="font-medium mb-3">Can you help with this request?</p>
           <div className="flex gap-3">

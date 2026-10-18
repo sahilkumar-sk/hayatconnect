@@ -78,6 +78,34 @@ async def trigger_matching(
         "donors": donors,
     }
 
+@router.get("/inbox")
+async def donor_inbox(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Requests this donor has been matched to, newest first."""
+    rows = await db.execute(
+        select(DonorResponse, BloodRequest)
+        .join(BloodRequest, BloodRequest.id == DonorResponse.request_id)
+        .where(DonorResponse.donor_id == current_user.id)
+        .order_by(BloodRequest.created_at.desc())
+    )
+    return [
+        {
+            "response_id": str(resp.id),
+            "request_id": str(req.id),
+            "status": resp.status.value,
+            "rank_score": resp.rank_score,
+            "blood_group_needed": req.blood_group_needed.value,
+            "hospital_name": req.hospital_name,
+            "urgency": req.urgency.value,
+            "units_needed": req.units_needed,
+            "units_fulfilled": req.units_fulfilled,
+            "request_status": req.status.value,
+            "expires_at": req.expires_at.isoformat(),
+        }
+        for resp, req in rows.all()
+    ]
 
 @router.post("/{request_id}/respond")
 async def donor_respond(

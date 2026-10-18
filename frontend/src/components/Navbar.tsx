@@ -1,80 +1,77 @@
-"use client";
-
-import { useState } from "react";
+﻿"use client";
+import { useEffect, useState } from "react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 
 export default function Navbar() {
-  const [menuOpen, setMenuOpen] = useState(false);
+  const pathname = usePathname();
+  const [loggedIn, setLoggedIn] = useState(false);
+  const [open, setOpen] = useState(false);
+
+  useEffect(() => {
+    try { setLoggedIn(!!localStorage.getItem("access_token")); } catch { setLoggedIn(false); }
+    setOpen(false);
+  }, [pathname]);
+
+  function logout() {
+    localStorage.removeItem("access_token");
+    localStorage.removeItem("refresh_token");
+    window.location.href = "/login";
+  }
+
+  const links = [
+    { href: "/requests/new", label: "Request Blood" },
+    { href: "/requests", label: "Find Donors" },
+    ...(loggedIn ? [{ href: "/inbox", label: "My matches" }, { href: "/dashboard", label: "Dashboard" }] : []),
+  ];
 
   return (
-    <nav className="sticky top-0 z-50 border-b border-gray-200 bg-white/95 backdrop-blur">
-      <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3">
-        {/* Logo */}
-        <Link href="/" className="flex items-center gap-2">
-          <span className="text-2xl">🩸</span>
-          <span className="text-xl font-bold text-primary-600">
-            Hayat<span className="text-gray-900">Connect</span>
-          </span>
+    <header className="border-b border-gray-200 bg-white">
+      <nav className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3">
+        <Link href="/" className="flex items-center gap-2 text-xl font-bold">
+          <svg width="22" height="28" viewBox="0 0 22 28" aria-hidden="true">
+            <path d="M11 0C11 0 0 12 0 18a11 11 0 0022 0C22 12 11 0 11 0z" fill="#e11d48" />
+          </svg>
+          <span><span className="text-primary-600">Hayat</span>Connect</span>
         </Link>
 
-        {/* Desktop Nav */}
         <div className="hidden items-center gap-6 md:flex">
-          <Link href="/request" className="text-sm font-medium text-gray-700 hover:text-primary-600">
-            Request Blood
-          </Link>
-          <Link href="/donors" className="text-sm font-medium text-gray-700 hover:text-primary-600">
-            Find Donors
-          </Link>
-          <Link href="/dashboard" className="text-sm font-medium text-gray-700 hover:text-primary-600">
-            Dashboard
-          </Link>
-          <Link href="/login" className="btn-secondary text-sm">
-            Log In
-          </Link>
-          <Link href="/register" className="btn-primary text-sm">
-            Register
-          </Link>
+          {links.map((l) => (
+            <Link key={l.href} href={l.href}
+              className={`text-sm hover:text-primary-600 ${pathname === l.href ? "font-semibold text-primary-600" : "text-gray-700"}`}>
+              {l.label}
+            </Link>
+          ))}
+          {loggedIn ? (
+            <button onClick={logout} className="btn-secondary">Log out</button>
+          ) : (
+            <>
+              <Link href="/login" className="btn-secondary">Log In</Link>
+              <Link href="/register" className="btn-primary">Register</Link>
+            </>
+          )}
         </div>
 
-        {/* Mobile Menu Button */}
-        <button
-          className="md:hidden"
-          onClick={() => setMenuOpen(!menuOpen)}
-          aria-label="Toggle menu"
-        >
-          <svg className="h-6 w-6 text-gray-700" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            {menuOpen ? (
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            ) : (
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-            )}
-          </svg>
+        <button className="md:hidden" onClick={() => setOpen(!open)} aria-label="Menu">
+          <span className="text-2xl">{open ? "✕" : "☰"}</span>
         </button>
-      </div>
+      </nav>
 
-      {/* Mobile Menu */}
-      {menuOpen && (
-        <div className="border-t border-gray-100 bg-white px-4 pb-4 md:hidden">
-          <div className="flex flex-col gap-3 pt-3">
-            <Link href="/request" className="text-sm font-medium text-gray-700" onClick={() => setMenuOpen(false)}>
-              Request Blood
-            </Link>
-            <Link href="/donors" className="text-sm font-medium text-gray-700" onClick={() => setMenuOpen(false)}>
-              Find Donors
-            </Link>
-            <Link href="/dashboard" className="text-sm font-medium text-gray-700" onClick={() => setMenuOpen(false)}>
-              Dashboard
-            </Link>
-            <hr className="border-gray-200" />
-            <Link href="/login" className="btn-secondary text-center text-sm" onClick={() => setMenuOpen(false)}>
-              Log In
-            </Link>
-            <Link href="/register" className="btn-primary text-center text-sm" onClick={() => setMenuOpen(false)}>
-              Register
-            </Link>
-          </div>
+      {open && (
+        <div className="space-y-3 border-t border-gray-200 px-4 py-4 md:hidden">
+          {links.map((l) => (
+            <Link key={l.href} href={l.href} className="block text-gray-700">{l.label}</Link>
+          ))}
+          {loggedIn ? (
+            <button onClick={logout} className="btn-secondary w-full">Log out</button>
+          ) : (
+            <div className="flex gap-3">
+              <Link href="/login" className="btn-secondary flex-1 text-center">Log In</Link>
+              <Link href="/register" className="btn-primary flex-1 text-center">Register</Link>
+            </div>
+          )}
         </div>
       )}
-    </nav>
+    </header>
   );
 }

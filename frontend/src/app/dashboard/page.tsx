@@ -1,9 +1,9 @@
-"use client";
+﻿"use client";
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import api from "@/lib/api";
-import { fetchMe, logout, Me } from "@/lib/auth";
+import { fetchMe, Me } from "@/lib/auth";
 import RequestCard, { BloodRequest } from "@/components/RequestCard";
 
 export default function Dashboard() {
@@ -11,6 +11,7 @@ export default function Dashboard() {
   const [me, setMe] = useState<Me | null>(null);
   const [mine, setMine] = useState<BloodRequest[]>([]);
   const [loading, setLoading] = useState(true);
+  const [locMsg, setLocMsg] = useState("");
 
   useEffect(() => {
     if (!localStorage.getItem("access_token")) { router.replace("/login"); return; }
@@ -32,28 +33,45 @@ export default function Dashboard() {
     setMe({ ...me, is_available: data.is_available ?? !me.is_available });
   }
 
+  function updateLocation() {
+    setLocMsg("Getting location...");
+    navigator.geolocation.getCurrentPosition(
+      async (p) => {
+        try {
+          await api.patch("/donors/me", { latitude: p.coords.latitude, longitude: p.coords.longitude });
+          setLocMsg("Location updated ✓");
+        } catch {
+          setLocMsg("Could not save location.");
+        }
+      },
+      () => setLocMsg("Location permission denied."),
+      { timeout: 8000 }
+    );
+  }
+
   if (loading) return <p className="p-8">Loading...</p>;
   if (!me) return null;
 
   return (
     <div className="mx-auto max-w-5xl space-y-6 px-4 py-8">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold">Salam, {me.name}</h1>
-          <p className="text-sm text-gray-600">
-            {me.role} {me.blood_group && `· ${me.blood_group}`} {me.area && `· ${me.area}`}
-          </p>
-        </div>
-        <button onClick={logout} className="btn-secondary">Log out</button>
+      <div>
+        <h1 className="text-2xl font-bold">Salam, {me.name}</h1>
+        <p className="text-sm text-gray-600">
+          {me.role} {me.blood_group && `· ${me.blood_group}`} {me.area && `· ${me.area}`}
+        </p>
       </div>
 
-      {me.blood_group && (
+      {me.role === "donor" && (
         <div className="card flex items-center justify-between">
           <div>
             <p className="font-medium">Donor availability</p>
             <p className="text-sm text-gray-600">
               Reliability score: {me.reliability_score ?? 50}/100
             </p>
+            <button onClick={updateLocation} className="mt-2 text-sm text-primary-600 underline">
+              Update my location
+            </button>
+            {locMsg && <p className="text-xs text-gray-500">{locMsg}</p>}
           </div>
           <button onClick={toggleAvailability} className={me.is_available ? "btn-primary" : "btn-secondary"}>
             {me.is_available ? "Available" : "Unavailable"}
@@ -61,9 +79,10 @@ export default function Dashboard() {
         </div>
       )}
 
-      <div className="flex gap-3">
+      <div className="flex flex-wrap gap-3">
         <Link href="/requests/new" className="btn-primary">+ New blood request</Link>
         <Link href="/requests" className="btn-secondary">Browse open requests</Link>
+        {me.role === "donor" && <Link href="/inbox" className="btn-secondary">My matches</Link>}
       </div>
 
       <section>
