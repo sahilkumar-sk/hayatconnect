@@ -15,7 +15,7 @@ export default function Home() {
           <a href="/register" className="btn-primary bg-white !text-primary-700 hover:!bg-primary-50 px-8 py-3 text-lg">
             Register as Donor
           </a>
-          <a href="/request" className="btn-secondary !border-primary-300 !text-white hover:!bg-primary-700 px-8 py-3 text-lg">
+          <a href="/requests/new" className="inline-flex items-center justify-center rounded-lg border-2 border-white bg-transparent px-8 py-3 text-lg font-semibold text-white transition hover:bg-white hover:text-primary-700">
             Request Blood
           </a>
         </div>

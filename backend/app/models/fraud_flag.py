@@ -31,7 +31,7 @@ class FraudFlag(Base):
     flag_type: Mapped[str] = mapped_column(String(50), nullable=False)
     details: Mapped[str | None] = mapped_column(String(500), nullable=True)
     status: Mapped[FlagStatus] = mapped_column(
-        SAEnum(FlagStatus), default=FlagStatus.PENDING
+        SAEnum(FlagStatus, values_callable=lambda e: [m.value for m in e]), default=FlagStatus.PENDING
     )
 
     created_at: Mapped[datetime] = mapped_column(

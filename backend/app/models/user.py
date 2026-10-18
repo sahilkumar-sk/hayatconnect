@@ -37,9 +37,9 @@ class User(Base):
     email: Mapped[str | None] = mapped_column(String(255), unique=True, nullable=True)
     password_hash: Mapped[str] = mapped_column(String(255), nullable=False)
     role: Mapped[UserRole] = mapped_column(
-        SAEnum(UserRole), default=UserRole.DONOR, nullable=False
+        SAEnum(UserRole, values_callable=lambda e: [m.value for m in e]), default=UserRole.DONOR, nullable=False
     )
-    blood_group: Mapped[BloodGroup | None] = mapped_column(SAEnum(BloodGroup), nullable=True)
+    blood_group: Mapped[BloodGroup | None] = mapped_column(SAEnum(BloodGroup, values_callable=lambda e: [m.value for m in e]), nullable=True)
     area: Mapped[str | None] = mapped_column(String(100), nullable=True)
     latitude: Mapped[float | None] = mapped_column(Float, nullable=True)
     longitude: Mapped[float | None] = mapped_column(Float, nullable=True)

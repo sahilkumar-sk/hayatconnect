@@ -35,7 +35,7 @@ class BloodRequest(Base):
     )
     patient_name: Mapped[str] = mapped_column(String(100), nullable=False)
     blood_group_needed: Mapped[BloodGroup] = mapped_column(
-        SAEnum(BloodGroup), nullable=False
+        SAEnum(BloodGroup, values_callable=lambda e: [m.value for m in e]), nullable=False
     )
     units_needed: Mapped[int] = mapped_column(Integer, default=1)
     units_fulfilled: Mapped[int] = mapped_column(Integer, default=0)
@@ -44,10 +44,10 @@ class BloodRequest(Base):
     hospital_latitude: Mapped[float | None] = mapped_column(Float, nullable=True)
     hospital_longitude: Mapped[float | None] = mapped_column(Float, nullable=True)
     urgency: Mapped[UrgencyLevel] = mapped_column(
-        SAEnum(UrgencyLevel), default=UrgencyLevel.URGENT
+        SAEnum(UrgencyLevel, values_callable=lambda e: [m.value for m in e]), default=UrgencyLevel.URGENT
     )
     status: Mapped[RequestStatus] = mapped_column(
-        SAEnum(RequestStatus), default=RequestStatus.OPEN
+        SAEnum(RequestStatus, values_callable=lambda e: [m.value for m in e]), default=RequestStatus.OPEN
     )
     notes: Mapped[str | None] = mapped_column(String(500), nullable=True)
     contact_phone: Mapped[str | None] = mapped_column(String(20), nullable=True)

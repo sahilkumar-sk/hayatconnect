@@ -31,7 +31,7 @@ class DonorResponse(Base):
         UUID(as_uuid=True), ForeignKey("users.id"), nullable=False
     )
     status: Mapped[ResponseStatus] = mapped_column(
-        SAEnum(ResponseStatus), default=ResponseStatus.NOTIFIED
+        SAEnum(ResponseStatus, values_callable=lambda e: [m.value for m in e]), default=ResponseStatus.NOTIFIED
     )
     rank_score: Mapped[float | None] = mapped_column(Float, nullable=True)
 
