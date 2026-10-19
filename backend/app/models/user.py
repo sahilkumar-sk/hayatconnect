@@ -1,4 +1,4 @@
-import uuid
+﻿import uuid
 from datetime import datetime
 
 from sqlalchemy import String, Float, Boolean, DateTime, Enum as SAEnum, func
@@ -53,6 +53,8 @@ class User(Base):
 
     # Phone verification
     is_phone_verified: Mapped[bool] = mapped_column(Boolean, default=False)
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True, server_default="true", nullable=False)
+    ban_reason: Mapped[str | None] = mapped_column(String(255), nullable=True)
 
     # Timestamps
     created_at: Mapped[datetime] = mapped_column(
@@ -65,3 +67,4 @@ class User(Base):
     # Relationships
     blood_requests = relationship("BloodRequest", back_populates="requester")
     donor_responses = relationship("DonorResponse", back_populates="donor")
+

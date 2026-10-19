@@ -15,6 +15,8 @@ type Match = {
   status?: string;
 };
 
+type Contact = { name: string; phone: string; status: string };
+
 export default function RequestDetail() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
@@ -22,6 +24,7 @@ export default function RequestDetail() {
   const [me, setMe] = useState<Me | null>(null);
   const [matches, setMatches] = useState<Match[]>([]);
   const [myStatus, setMyStatus] = useState<string | null>(null);
+  const [contacts, setContacts] = useState<Contact[]>([]);
   const [msg, setMsg] = useState("");
   const [busy, setBusy] = useState(false);
 
@@ -38,6 +41,15 @@ export default function RequestDetail() {
       .then(({ data }) => setMyStatus(data.find((x: any) => x.request_id === id)?.status ?? null))
       .catch(() => {});
   }, [id]);
+
+  useEffect(() => {
+    if (!me || !req) return;
+    const owner = req.requester_id === me.id;
+    if (!owner && myStatus !== "accepted") return;
+    api.get(`/matching/${id}/contacts`)
+      .then(({ data }) => setContacts(data.contacts ?? []))
+      .catch(() => {});
+  }, [me, req, myStatus, id]);
 
   async function runMatch() {
     setBusy(true); setMsg("");
@@ -109,6 +121,22 @@ export default function RequestDetail() {
             <button className="btn-secondary" onClick={() => respond("decline")} disabled={busy}>Decline</button>
           </div>
         </div>
+      )}
+
+      {contacts.length > 0 && (
+        <section className="card">
+          <h2 className="text-lg font-semibold mb-2">
+            {isOwner ? "Donors who accepted" : "Requester contact"}
+          </h2>
+          <ul className="space-y-2 text-sm">
+            {contacts.map((c, i) => (
+              <li key={i} className="flex justify-between">
+                <span>{c.name}</span>
+                <a href={`tel:${c.phone}`} className="text-primary-600 underline">{c.phone}</a>
+              </li>
+            ))}
+          </ul>
+        </section>
       )}
 
       {matches.length > 0 && (

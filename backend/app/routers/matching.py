@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+﻿from datetime import datetime, timezone
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -12,6 +12,7 @@ from app.models.blood_request import BloodRequest, RequestStatus
 from app.models.donor_response import DonorResponse, ResponseStatus
 from app.models.rating import Rating
 from app.services.matching_service import find_matching_donors, haversine_km
+from app.services.notifications import notify_donor_new_request
 
 router = APIRouter()
 
@@ -49,6 +50,16 @@ async def trigger_matching(
         ))
     await db.flush()
 
+    # SMS each newly matched donor (console in dev, Twilio in prod)
+    for match in matches:
+        d = match["donor"]
+        await notify_donor_new_request(
+            d.phone,
+            d.name,
+            getattr(req.blood_group_needed, "value", str(req.blood_group_needed)),
+            req.hospital_name,
+            getattr(req.urgency, "value", str(req.urgency)),
+        )
     # Return every donor matched to this request, new and previous
     rows = await db.execute(
         select(DonorResponse, User)
@@ -106,6 +117,56 @@ async def donor_inbox(
         }
         for resp, req in rows.all()
     ]
+
+@router.get("/{request_id}/contacts")
+async def request_contacts(
+    request_id: str,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Reveal phone numbers only after a donor has accepted."""
+    result = await db.execute(
+        select(BloodRequest).where(BloodRequest.id == UUID(request_id))
+    )
+    req = result.scalar_one_or_none()
+    if not req:
+        raise HTTPException(status_code=404, detail="Request not found")
+
+    accepted = [ResponseStatus.ACCEPTED, ResponseStatus.COMPLETED]
+
+    # Requester sees every donor who accepted
+    if req.requester_id == current_user.id:
+        rows = await db.execute(
+            select(DonorResponse, User)
+            .join(User, User.id == DonorResponse.donor_id)
+            .where(DonorResponse.request_id == req.id, DonorResponse.status.in_(accepted))
+        )
+        return {
+            "role": "requester",
+            "contacts": [
+                {"name": u.name, "phone": u.phone, "status": r.status.value}
+                for r, u in rows.all()
+            ],
+        }
+
+    # A donor sees the requester's contact only if they accepted
+    mine = await db.execute(
+        select(DonorResponse).where(
+            DonorResponse.request_id == req.id,
+            DonorResponse.donor_id == current_user.id,
+            DonorResponse.status.in_(accepted),
+        )
+    )
+    if not mine.scalar_one_or_none():
+        raise HTTPException(status_code=403, detail="Accept the request to see contact details")
+
+    requester = await db.get(User, req.requester_id)
+    return {
+        "role": "donor",
+        "contacts": [
+            {"name": requester.name, "phone": req.contact_phone or requester.phone, "status": "requester"}
+        ],
+    }
 
 @router.post("/{request_id}/respond")
 async def donor_respond(
@@ -248,7 +309,7 @@ async def rate_donation(
         raise HTTPException(status_code=409, detail="Already rated this donation")
 
     # Determine who is being rated
-    # If current user is the requester → rating the donor, and vice versa
+    # If current user is the requester â†’ rating the donor, and vice versa
     req_result = await db.execute(
         select(BloodRequest).where(BloodRequest.id == response.request_id)
     )

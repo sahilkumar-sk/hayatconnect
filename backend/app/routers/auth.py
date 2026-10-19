@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+﻿from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -72,6 +72,9 @@ async def login(payload: LoginRequest, db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(User).where(User.phone == payload.phone))
     user = result.scalar_one_or_none()
 
+    if user and not user.is_active and verify_password(payload.password, user.password_hash):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Your account has been suspended")
+
     if not user or not verify_password(payload.password, user.password_hash):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -100,10 +103,10 @@ async def refresh_token(payload: RefreshRequest, db: AsyncSession = Depends(get_
     result = await db.execute(select(User).where(User.id == user_id))
     user = result.scalar_one_or_none()
 
-    if not user:
+    if not user or not user.is_active:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="User not found",
+            detail="User not found or account suspended",
         )
 
     # Return new token pair
@@ -137,3 +140,4 @@ async def verify_otp_endpoint(payload: OTPVerify, db: AsyncSession = Depends(get
         user.is_phone_verified = True
 
     return {"message": "Phone verified successfully"}
+
